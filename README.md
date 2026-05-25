@@ -33,5 +33,4 @@ This is not meant to be a serious production app. It is just a small thing to ki
 npx lakebed@latest dev
 ```
 
-The server reads `LAUNCH_LIBRARY_API_BASE_URL` from `.env.lakebed.server`. See `.env.lakebed.server.example`.
-
+The Launch Library base URL is a plain constant in `server/index.ts`, since this prototype only uses the public API.

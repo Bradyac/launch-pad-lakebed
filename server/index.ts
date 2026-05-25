@@ -4,7 +4,7 @@ import { emptyLaunchFeed } from "../shared/launches";
 
 const CACHE_KEY = "upcoming-launches";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
-const DEFAULT_API_BASE_URL = "https://ll.thespacedevs.com/2.3.0";
+const API_BASE_URL = "https://ll.thespacedevs.com/2.3.0";
 
 type CacheRow = {
   id: string;
@@ -50,10 +50,6 @@ type ApiLaunch = {
 type ApiResponse = {
   results?: ApiLaunch[];
 };
-
-function apiBaseUrl(envValue: string | undefined): string {
-  return (envValue || DEFAULT_API_BASE_URL).replace(/\/+$/, "");
-}
 
 function upcomingLaunchesUrl(baseUrl: string): string {
   return baseUrl + "/launches/upcoming/?limit=10&mode=detailed&ordering=net";
@@ -103,9 +99,8 @@ function cacheIsFresh(row: CacheRow | null): boolean {
 
 async function fetchLaunchFeed(ctx: {
   db: Record<string, { where: (field: string, value: unknown) => { all: () => CacheRow[] }; insert: (value: unknown) => CacheRow; update: (id: string, patch: unknown) => void }>;
-  env: Record<string, string | undefined>;
 }): Promise<LaunchFeed> {
-  const baseUrl = apiBaseUrl(ctx.env.LAUNCH_LIBRARY_API_BASE_URL);
+  const baseUrl = API_BASE_URL;
   const source = upcomingLaunchesUrl(baseUrl);
   const response = await fetch(source, {
     headers: {
@@ -140,7 +135,6 @@ async function fetchLaunchFeed(ctx: {
 
 async function cachedLaunchFeed(ctx: {
   db: Record<string, { where: (field: string, value: unknown) => { all: () => CacheRow[] }; insert: (value: unknown) => CacheRow; update: (id: string, patch: unknown) => void }>;
-  env: Record<string, string | undefined>;
   log: { warn: (message: string, data?: unknown) => void };
 }): Promise<LaunchFeed> {
   const row = cacheRow(ctx);
@@ -162,7 +156,7 @@ async function cachedLaunchFeed(ctx: {
 
     return {
       ...emptyLaunchFeed,
-      source: upcomingLaunchesUrl(apiBaseUrl(ctx.env.LAUNCH_LIBRARY_API_BASE_URL)),
+      source: upcomingLaunchesUrl(API_BASE_URL),
       error: message
     };
   }
