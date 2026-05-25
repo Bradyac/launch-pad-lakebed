@@ -41,37 +41,86 @@ function providerOptions(launches: Launch[]): string[] {
   return Array.from(new Set(providers)).sort((a, b) => a.localeCompare(b));
 }
 
+function locationOptions(launches: Launch[]): string[] {
+  const locations = launches.map((launch) => launch.location).filter(Boolean);
+  return Array.from(new Set(locations)).sort((a, b) => a.localeCompare(b));
+}
+
+function statusClass(status: string): string {
+  const normalized = status.toLowerCase();
+
+  if (normalized.includes("go") || normalized.includes("success")) {
+    return "border-emerald-700 bg-emerald-950 text-emerald-100";
+  }
+
+  if (normalized.includes("tbc") || normalized.includes("tbd") || normalized.includes("confirm")) {
+    return "border-amber-700 bg-amber-950 text-amber-100";
+  }
+
+  if (normalized.includes("fail") || normalized.includes("hold") || normalized.includes("scrub")) {
+    return "border-red-700 bg-red-950 text-red-100";
+  }
+
+  return "border-sky-700 bg-sky-950 text-sky-100";
+}
+
+function isCompletedStatus(status: string): boolean {
+  const normalized = status.toLowerCase();
+  return normalized.includes("success") || normalized.includes("failure") || normalized.includes("failed");
+}
+
 function LaunchImage({ launch }: { launch: Launch }) {
   if (!launch.imageUrl) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center border border-neutral-800 bg-neutral-950 text-sm text-neutral-500 sm:aspect-square sm:w-36">
+      <div className="flex aspect-video w-full items-center justify-center border border-neutral-800 bg-neutral-950 text-sm text-neutral-500 sm:aspect-square sm:w-40">
         No image
       </div>
     );
   }
 
-  return (
+  const image = (
     <img
       alt=""
-      className="aspect-video w-full border border-neutral-800 bg-neutral-950 object-cover sm:aspect-square sm:w-36"
+      className="aspect-video w-full border border-neutral-800 bg-neutral-950 object-cover sm:aspect-square sm:w-40"
       loading="lazy"
       referrerPolicy="no-referrer"
       src={launch.imageUrl}
     />
   );
+
+  return (
+    <a href={launch.imageUrl} rel="noreferrer" target="_blank">
+      {image}
+    </a>
+  );
 }
 
-function LaunchRow({ launch, now }: { launch: Launch; now: number }) {
+function LaunchTitle({ launch }: { launch: Launch }) {
+  if (!launch.infoUrl) {
+    return <h2 className="text-xl font-semibold text-white">{launch.name}</h2>;
+  }
+
   return (
-    <li className="grid gap-4 border-t border-neutral-800 py-5 sm:grid-cols-[9rem_1fr]">
+    <h2 className="text-xl font-semibold text-white">
+      <a className="hover:text-sky-200" href={launch.infoUrl} rel="noreferrer" target="_blank">
+        {launch.name}
+      </a>
+    </h2>
+  );
+}
+
+function LaunchRow({ launch, now, featured }: { launch: Launch; now: number; featured: boolean }) {
+  return (
+    <li className={"grid gap-4 border-t py-5 sm:grid-cols-[10rem_1fr] " + (featured ? "border-sky-800 bg-sky-950/20 px-3" : "border-neutral-800")}>
       <LaunchImage launch={launch} />
       <div className="min-w-0">
         <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="border border-sky-700 bg-sky-950 px-2 py-1 text-xs font-medium text-sky-100">{launch.status}</span>
+          {featured ? <span className="border border-sky-500 bg-sky-900 px-2 py-1 text-xs font-medium text-sky-100">Next launch</span> : null}
+          <span className={"border px-2 py-1 text-xs font-medium " + statusClass(launch.status)}>{launch.status}</span>
           <span className="border border-neutral-700 px-2 py-1 font-mono text-xs text-neutral-300">{formatCountdown(launch.net, now)}</span>
         </div>
-        <h2 className="text-xl font-semibold text-white">{launch.name}</h2>
-        <p className="mt-2 text-sm text-neutral-300">{formatDate(launch.net)}</p>
+        <LaunchTitle launch={launch} />
+        <p className="mt-2 text-sm text-neutral-300">NET {formatDate(launch.net)}</p>
         <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
           <div>
             <dt className="text-neutral-500">Provider</dt>
@@ -99,15 +148,22 @@ export function App() {
   const rawFeed = useQuery<LaunchFeed>("launches");
   const [query, setQuery] = useState("");
   const [provider, setProvider] = useState("All providers");
+  const [location, setLocation] = useState("All locations");
   const [now, setNow] = useState(Date.now());
   const isLoading = !isLaunchFeed(rawFeed);
   const feed = isLaunchFeed(rawFeed) ? rawFeed : emptyLaunchFeed;
   const providers = useMemo(() => providerOptions(feed.launches), [feed.launches]);
+  const locations = useMemo(() => locationOptions(feed.launches), [feed.launches]);
   const normalizedQuery = query.trim().toLowerCase();
   const visibleLaunches = feed.launches.filter((launch) => {
+    if (isCompletedStatus(launch.status)) {
+      return false;
+    }
+
     const matchesProvider = provider === "All providers" || launch.provider === provider;
+    const matchesLocation = location === "All locations" || launch.location === location;
     const searchable = [launch.name, launch.provider, launch.rocket, launch.pad, launch.location, launch.status].join(" ").toLowerCase();
-    return matchesProvider && (!normalizedQuery || searchable.includes(normalizedQuery));
+    return matchesProvider && matchesLocation && (!normalizedQuery || searchable.includes(normalizedQuery));
   });
 
   useEffect(() => {
@@ -122,6 +178,7 @@ export function App() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-mono text-sm uppercase tracking-[0.18em] text-sky-300">Launch Library 2</p>
             <a
+              aria-label="View source on GitHub"
               className="border border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:border-sky-400 hover:text-sky-200"
               href="https://github.com/Bradyac/launch-pad-lakebed"
               rel="noreferrer"
@@ -137,11 +194,19 @@ export function App() {
             </div>
           </div>
           <div className="mt-4 text-sm text-neutral-500">
-            {feed.fetchedAt ? <span>Last fetched from TheSpaceDevs {formatDate(feed.fetchedAt)}. Next fetch after {formatDate(feed.nextRefreshAt)}.</span> : null}
+            {feed.fetchedAt ? (
+              <span>
+                Last fetched from{" "}
+                <a className="text-neutral-300 hover:text-sky-200" href="https://thespacedevs.com/llapi" rel="noreferrer" target="_blank">
+                  TheSpaceDevs
+                </a>{" "}
+                {formatDate(feed.fetchedAt)}. Next fetch after {formatDate(feed.nextRefreshAt)}.
+              </span>
+            ) : null}
           </div>
         </header>
 
-        <section className="mb-6 grid gap-3 sm:grid-cols-[1fr_16rem]">
+        <section className="mb-6 grid gap-3 lg:grid-cols-[1fr_16rem_16rem]">
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-neutral-300">Search</span>
             <input
@@ -164,10 +229,25 @@ export function App() {
               ))}
             </select>
           </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-neutral-300">Location</span>
+            <select
+              className="h-11 w-full border border-neutral-700 bg-neutral-950 px-3 text-white outline-none focus:border-sky-400"
+              value={location}
+              onInput={(event) => setLocation((event.currentTarget as HTMLSelectElement).value)}
+            >
+              <option>All locations</option>
+              {locations.map((option) => (
+                <option key={option}>{option}</option>
+              ))}
+            </select>
+          </label>
         </section>
 
         {isLoading ? (
           <div className="border-y border-neutral-800 py-12 text-center text-neutral-400">Loading upcoming launches...</div>
+        ) : feed.error && feed.launches.length > 0 ? (
+          <div className="mb-6 border border-amber-900 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">Showing cached data because the latest fetch failed: {feed.error}</div>
         ) : feed.error ? (
           <div className="mb-6 border border-red-900 bg-red-950/40 px-4 py-3 text-sm text-red-100">{feed.error}</div>
         ) : null}
@@ -177,10 +257,22 @@ export function App() {
         ) : null}
 
         <ul className="border-b border-neutral-800">
-          {visibleLaunches.map((launch) => (
-            <LaunchRow key={launch.id} launch={launch} now={now} />
+          {visibleLaunches.map((launch, index) => (
+            <LaunchRow featured={index === 0} key={launch.id} launch={launch} now={now} />
           ))}
         </ul>
+
+        <footer className="py-8 text-sm text-neutral-500">
+          Built with{" "}
+          <a className="text-neutral-300 hover:text-sky-200" href="https://lakebed.dev/" rel="noreferrer" target="_blank">
+            Lakebed
+          </a>{" "}
+          and Codex. Launch data from{" "}
+          <a className="text-neutral-300 hover:text-sky-200" href="https://thespacedevs.com/" rel="noreferrer" target="_blank">
+            TheSpaceDevs
+          </a>
+          .
+        </footer>
       </section>
     </main>
   );

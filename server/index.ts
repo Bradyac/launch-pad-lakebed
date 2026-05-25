@@ -19,6 +19,7 @@ type ApiLaunch = {
   id?: string;
   name?: string;
   net?: string;
+  url?: string;
   image_url?: string;
   image?: {
     image_url?: string;
@@ -52,7 +53,7 @@ type ApiResponse = {
 };
 
 function upcomingLaunchesUrl(baseUrl: string): string {
-  return baseUrl + "/launches/upcoming/?limit=10&mode=detailed&ordering=net";
+  return baseUrl + "/launches/upcoming/?limit=20&mode=detailed&ordering=net";
 }
 
 function text(value: unknown, fallback: string): string {
@@ -72,8 +73,14 @@ function normalizeLaunch(launch: ApiLaunch): Launch {
     pad: text(launch.pad?.name, "Unknown pad"),
     location: text(launch.pad?.location?.name, "Unknown location"),
     status: text(launch.status?.name, "Unknown"),
-    imageUrl
+    imageUrl,
+    infoUrl: text(launch.url, "")
   };
+}
+
+function isCompletedLaunch(launch: Launch): boolean {
+  const status = launch.status.toLowerCase();
+  return status.includes("success") || status.includes("failure") || status.includes("failed");
 }
 
 function parseFeed(payload: string): LaunchFeed | null {
@@ -115,7 +122,7 @@ async function fetchLaunchFeed(ctx: {
   const body = (await response.json()) as ApiResponse;
   const fetchedAt = new Date().toISOString();
   const feed: LaunchFeed = {
-    launches: (body.results ?? []).slice(0, 10).map(normalizeLaunch),
+    launches: (body.results ?? []).map(normalizeLaunch).filter((launch) => !isCompletedLaunch(launch)).slice(0, 10),
     fetchedAt,
     nextRefreshAt: new Date(Date.parse(fetchedAt) + CACHE_TTL_MS).toISOString(),
     source,

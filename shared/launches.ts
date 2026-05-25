@@ -8,6 +8,7 @@ export type Launch = {
   location: string;
   status: string;
   imageUrl: string;
+  infoUrl: string;
 };
 
 export type LaunchFeed = {
@@ -25,4 +26,3 @@ export const emptyLaunchFeed: LaunchFeed = {
   source: "",
   error: ""
 };
-
