@@ -119,7 +119,17 @@ export function App() {
     <main className="min-h-screen bg-black px-4 py-6 text-white sm:px-6 lg:px-8">
       <section className="mx-auto max-w-5xl">
         <header className="mb-6">
-          <p className="font-mono text-sm uppercase tracking-[0.18em] text-sky-300">Launch Library 2</p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-sm uppercase tracking-[0.18em] text-sky-300">Launch Library 2</p>
+            <a
+              className="border border-neutral-700 px-3 py-1.5 text-sm font-medium text-neutral-300 hover:border-sky-400 hover:text-sky-200"
+              href="https://github.com/Bradyac/launch-pad-lakebed"
+              rel="noreferrer"
+              target="_blank"
+            >
+              GitHub
+            </a>
+          </div>
           <div className="mt-2">
             <div>
               <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Launch Pad</h1>
