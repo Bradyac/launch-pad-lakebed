@@ -22,8 +22,8 @@ It was also an excuse to keep experimenting with Codex as a coding partner for b
 
 The idea is a loose callback to an older launch dashboard I built years ago as a recent grad while learning Angular and serverless tools for the first time:
 
-- `https://ground-control.netlify.app/ground-control`
-- Ground Control GitHub repos
+- `https://ground-control.netlify.app`
+- Ground Control GitHub repos: Bradyac/ground-control, Bradyac/ground-control-data-fetchers
 
 This is not meant to be a serious production app. It is just a small thing to kick the tires on Lakebed.
 
